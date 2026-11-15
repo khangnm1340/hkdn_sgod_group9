@@ -1,0 +1,22 @@
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Django uploads and generated files
+backend/media/
+backend/staticfiles/
+
+# Editor
+.idea/
+.vscode/

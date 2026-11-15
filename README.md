@@ -1,239 +1,530 @@
-# OCR labeling MVP: architecture and repository bootstrap
+# OCR + Face Annotation Platform
 
-## Should you copy CVAT's architecture?
+A web-based, multi-user image annotation platform for creating and reviewing **OCR text regions** and **face bounding boxes**.
 
-Use CVAT as a **reference**, but do not reproduce its full architecture for this MVP. CVAT supports many modalities, large deployments, integrations, workers, and operational requirements. An image-only OCR college project does not need most of that complexity. Copy the useful boundaries and concepts: keep import logic separate from annotation logic, keep the browser UI separate from data validation and persistence, define one canonical annotation format, and test import/export behavior. Implement those ideas in a small application that your group can run and explain.
+The project is being developed as a modular monolith: one React frontend, one Django REST Framework backend, one PostgreSQL database, and local filesystem storage for uploaded images and generated exports.
 
-Recommended first version:
+> **Project status:** Initial development / MVP. Features listed below describe the intended scope; they should not be considered implemented until their issues are completed and merged.
 
-- one Git repository;
-- one web application, with backend and frontend modules in the same repository;
-- one relational database (SQLite for local development; PostgreSQL if you deploy for multiple users);
-- local media storage for development;
-- no microservices, Kubernetes, model server, or queue at the start;
-- synchronous import for small packages, with clear size limits. Add a background worker only if real imports take too long.
+## Contents
 
-Pick a stack your group or course can support. One reasonable default is **Django + Django REST Framework + PostgreSQL + React/TypeScript**. Django gives you authentication, database migrations, admin tooling, and a clear backend structure. If the group already knows another stack, familiarity is more valuable than this particular choice. Avoid splitting into multiple repositories or services until there is a demonstrated reason.
+- [Project goals](#project-goals)
+- [MVP scope](#mvp-scope)
+- [Technology stack](#technology-stack)
+- [Architecture](#architecture)
+- [Repository structure](#repository-structure)
+- [Requirements](#requirements)
+- [Getting started](#getting-started)
+  - [1. Clone the repository](#1-clone-the-repository)
+  - [2. Configure environment variables](#2-configure-environment-variables)
+  - [3. Start PostgreSQL](#3-start-postgresql)
+  - [4. Set up the Django backend](#4-set-up-the-django-backend)
+  - [5. Set up local file storage](#5-set-up-local-file-storage)
+  - [6. Set up the React frontend](#6-set-up-the-react-frontend)
+  - [7. Run the application](#7-run-the-application)
+- [Common development commands](#common-development-commands)
+- [Database and file storage](#database-and-file-storage)
+- [API and annotation conventions](#api-and-annotation-conventions)
+- [Testing and quality checks](#testing-and-quality-checks)
+- [Contributing](#contributing)
+- [AI-assisted development](#ai-assisted-development)
+- [Version control: Git and Jujutsu](#version-control-git-and-jujutsu)
+- [References](#references)
+
+## Project goals
+
+The platform provides a shared workspace where users can upload image datasets, annotate images, and review or export their work.
+
+The main annotation types are:
+
+- **OCR regions:** rectangular regions around text, with an editable Unicode transcription.
+- **Face regions:** rectangular bounding boxes around faces, without a transcription field.
+
+The first release focuses on reliable human annotation workflows. Automated OCR inference, face detection models, and other machine-learning features are not part of the initial MVP unless the project requirements are explicitly changed.
 
 ## MVP scope
 
-The MVP should support:
+### Planned features
 
-1. Uploading a ZIP of images, with optional ICDAR-style text-region annotations.
-2. Validating the archive and previewing import errors before creating the dataset.
-3. Displaying an image and its existing OCR regions.
-4. Drawing and editing rectangular or polygon text regions (choose one shape first; rectangles are simpler).
-5. Entering and editing the transcription for each region.
-6. Saving, reopening, and deleting annotations.
-7. Exporting images and annotations in one documented format, preferably matching the first import format.
-8. A minimal multi-user workflow: sign in, see assigned datasets, and avoid silently overwriting another person's edits.
+- User registration/login and authenticated API access.
+- Dataset creation and dataset membership management.
+- Role-based permissions for dataset owners, annotators, and reviewers.
+- Image upload and image metadata management.
+- Browser-based annotation editor for OCR regions and face boxes.
+- Create, retrieve, edit, and delete annotations.
+- Basic annotation review (pending, approved, rejected), if retained in the agreed requirements.
+- ZIP import with validation and a preview of errors before confirmation.
+- Dataset export containing images and annotations.
 
-Leave OCR model inference, video, face/person/vehicle labels, complex review analytics, cloud storage integrations, and multi-format support outside the first milestone.
+### Not planned for the first MVP
+
+- Automated OCR or face-detection inference.
+- Video annotation.
+- Polygon, brush, keypoint, or 3D annotation.
+- Real-time collaborative editing of the same image.
+- Cloud object storage integrations.
+- Microservices, Kubernetes, or a distributed task queue.
+- Multiple import/export formats beyond the format agreed in the specification.
+
+Keep the first implementation small. Add infrastructure only when a demonstrated requirement justifies it.
+
+## Technology stack
+
+| Area | Technology | Responsibility |
+|---|---|---|
+| Frontend | React + TypeScript | Application UI and annotation editor |
+| Frontend tooling | Vite | Development server and build tooling |
+| Backend | Django 6.1 | Application framework and domain logic |
+| API | Django REST Framework | REST endpoints, serializers, and permissions |
+| Database | PostgreSQL 17 (development default) | Users, datasets, images' metadata, and annotations |
+| Python dependencies | `uv` | Project dependencies, virtual environments, and lockfile |
+| Image handling | Pillow | Reading image dimensions and validating image files |
+| File storage | Local filesystem | Original images, staged imports, and exports |
+| Container tooling | Docker Compose or Podman Compose | Reproducible local PostgreSQL service |
+| Version control | Git-compatible remote; Git or Jujutsu locally | Collaboration and code review |
+
+### Django version policy
+
+This project targets the **Django 6.1 release series** (`Django>=6.1,<6.2`). The `uv.lock` file records the exact resolved patch versions used by the team. Update dependencies deliberately and run the backend test suite before committing a lockfile change.
+
+Django 6.1's mainstream support is scheduled to end in **April 2027**; extended support is scheduled to end in **December 2027**. Django 6.1 supports Python 3.12–3.15 as of patch release 6.1.3. This project uses Python 3.14 by default; keep the `.python-version` file and `pyproject.toml` consistent across the team.
 
 ## Architecture
 
 ```text
-Annotator's browser
-  ├─ Dataset list and import form
-  ├─ OCR image editor (canvas + transcription fields)
-  └─ API client
-           |
-           v
-Web backend (single application)
-  ├─ Authentication and dataset/task endpoints
-  ├─ Import validator and format adapter
-  ├─ Annotation validation and persistence
-  └─ Export format adapter
-      |                    |
-      v                    v
-Relational database     Image/file storage
-users, datasets,        original uploads, extracted images,
-items, regions,         generated exports
-transcriptions
+Browser
+  React + TypeScript
+  ├── Authentication screens
+  ├── Dataset management
+  ├── Image viewer and annotation editor
+  └── API client
+          │ HTTP / JSON / multipart uploads
+          ▼
+Django + Django REST Framework
+  ├── accounts       users and authentication
+  ├── datasets       datasets, memberships, and images
+  ├── annotations    OCR regions and face boxes
+  └── imports        import validation and export serialization
+          │                         │
+          ▼                         ▼
+PostgreSQL                    Local filesystem
+  users                       uploaded images
+  datasets                    staged import files
+  memberships                 generated exports
+  image metadata
+  annotations
 ```
 
-The backend is the authority for validation and saving. The frontend can give immediate feedback, but must not be the only place that checks geometry, permissions, or import correctness. The source image files live in file/object storage; the database stores their metadata and paths/keys, not the image bytes themselves.
+The database stores metadata and file paths, not image bytes. Uploaded files live under the backend's media directory. The backend is authoritative for authentication, permissions, geometry validation, import validation, and persistence; frontend validation is only for immediate user feedback.
 
-### Backend modules
+## Repository structure
 
-- **Accounts:** users and basic roles. For a course prototype, account creation can be limited to the team.
-- **Datasets and images:** dataset metadata, source image records, checksums, dimensions, and storage keys.
-- **OCR annotations:** geometry, transcription, optional language, and timestamps/author. Use an explicit schema rather than a generic shape with arbitrary fields.
-- **Import:** archive inspection, format parsing, validation report, and dataset creation.
-- **Export:** serialize canonical records to the selected output format.
-
-These are modules in one backend, not separate network services.
-
-### Minimal data model
-
-One possible starting schema:
+The intended structure as the project grows:
 
 ```text
-Dataset(id, name, created_by, created_at)
-Image(id, dataset_id, filename, storage_key, width, height, checksum)
-OCRRegion(id, image_id, geometry, transcription, created_by, updated_at, version)
-```
-
-Keep coordinates in original-image pixel units and document the geometry convention. For a rectangle, store `x1, y1, x2, y2`; require `0 <= x1 < x2 <= width` and `0 <= y1 < y2 <= height`. If using polygons, require at least three valid points and check that points lie within image bounds. Store transcription as Unicode text. Decide whether an empty transcription is allowed and test that choice.
-
-Add dataset assignment/review tables only when the MVP workflow needs them. If multiple annotators may edit one image, use a version number (optimistic concurrency): a save based on an old version should return a conflict and ask the user to reload/resolve it instead of erasing newer work.
-
-### Import contract
-
-Write down exactly what the first import accepts. For example: a ZIP containing supported image files and, optionally, an ICDAR localization annotation file. Specify filename matching, character encoding, coordinate order, supported geometry, and what happens to unknown fields.
-
-Import flow:
-
-1. Upload to a temporary/staging location.
-2. Enforce upload size, file-count, and image-type limits; inspect actual file content rather than trusting extensions alone.
-3. Safely inspect ZIP entries and reject path traversal, nested archives, and suspicious expansion sizes.
-4. Parse images and optional annotations; report missing images, duplicate names, malformed rows, invalid coordinates, and unsupported records.
-5. Show a preview/validation summary. Do not partially create a dataset on a failed import.
-6. On confirmation, save dataset metadata and extracted images, then create normalized OCR regions.
-
-For the first MVP, a clear validation report matters more than supporting many variants. Do not silently drop records.
-
-### Annotation save flow
-
-```text
-User draws/edits region and enters transcription
-  → frontend validates obvious mistakes for quick feedback
-  → API checks authentication, permissions, geometry and version
-  → database saves region and increments its version
-  → API returns canonical saved record
-  → frontend shows saved state
-```
-
-Auto-save can be added, but make pending/saved/error states visible. A Save button is acceptable for the first version if it prevents navigation from discarding edits.
-
-## Testing plan
-
-Start tests with the behaviors that can lose or corrupt student annotation data:
-
-- **Unit tests:** import parser, filename matching, geometry bounds, Unicode transcription handling, and export serialization.
-- **Fixture tests:** a tiny known ZIP imports into exact expected images/regions and exports to expected files. Include malformed rows, duplicate files, missing images, and invalid coordinates.
-- **API tests:** upload/validate/confirm, create/update/delete a region, permission checks, stale-version conflict, and export download.
-- **UI tests:** import a sample dataset, open an image, draw a region, enter text, save, navigate away and back, and verify it persists.
-- **One end-to-end smoke test:** run the application in its normal local deployment and complete one import-label-export round trip.
-
-Use synthetic fixtures only; do not commit private or real face data. Each feature should include acceptance criteria and tests. Configure GitHub Actions (or your Git host's CI) to run formatting/lint, type checks where applicable, and tests on every pull request. Protect the main branch so changes are reviewed and checks pass before merging.
-
-Do not ask AI to “make the app” in one prompt. Give it small tasks: one importer behavior, one API endpoint, one UI flow. Supply acceptance criteria, ask for tests, inspect the diff, and run the documented checks. Keep a human responsible for deciding whether behavior matches the labeling rules.
-
-## Initial repository setup
-
-The commands below assume the project will use GitHub and Django + React. Run them in a new project directory, **not inside the CVAT checkout**. Replace `YOUR-ORG/YOUR-REPO` and `your-github-username` with your own values. These are a starting skeleton; do not generate a full application scaffold before the group agrees on its scope and stack.
-
-### 1. Create and initialize the project directory
-
-```bash
-mkdir ocr-labeling-mvp
-cd ocr-labeling-mvp
-git init -b main
-```
-
-Create the initial structure:
-
-```bash
-mkdir -p backend frontend docs tests/fixtures
-touch README.md .gitignore
-```
-
-Suggested structure as the project grows:
-
-```text
-ocr-labeling-mvp/
-├── backend/              # Django project and domain apps
-├── frontend/             # React/TypeScript application
-├── docs/                 # requirements, label guide, decisions
-├── tests/fixtures/       # tiny synthetic import/export examples
-├── .github/workflows/    # automated checks
+annotation-platform/
+├── backend/
+│   ├── config/                 # Django project settings and URL configuration
+│   ├── accounts/               # Custom user model and authentication
+│   ├── datasets/               # Datasets, memberships, and images
+│   ├── annotations/            # OCR and face annotations
+│   ├── imports/                # ZIP validation, import, and export
+│   ├── media/                  # Local uploaded files (not committed)
+│   ├── pyproject.toml          # Python dependencies managed by uv
+│   ├── uv.lock                 # Exact resolved Python dependencies
+│   └── manage.py
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── package-lock.json
+├── docs/
+│   ├── architecture.md
+│   ├── database-and-api-spec.md
+│   └── annotation-guidelines.md
+├── tests/
+│   └── fixtures/               # Small synthetic test datasets only
+├── .agents/                    # Optional project-specific agent skills
+├── .github/workflows/           # CI workflows
+├── AGENTS.md                   # Shared instructions for coding agents
+├── .env.example
 ├── .gitignore
+├── compose.yaml                # Local PostgreSQL service
 └── README.md
 ```
 
-### 2. Write the README before implementation
+The exact structure may evolve, but changes to the architecture or API contract must be reflected in `docs/`.
 
-The first README should state:
+## Requirements
 
-- what problem the MVP solves and who uses it;
-- the exact first-release features and explicit out-of-scope items;
-- the chosen stack and supported import/export format;
-- prerequisites and copy-paste local setup/run/test commands (fill these in as the app is scaffolded);
-- where sample data lives and confirmation that fixtures are synthetic;
-- how to propose work, review changes, and report bugs.
+Install the following tools before setting up the project:
 
-Do not leave setup commands as guesses. Verify each command on a clean checkout before calling the README complete.
+- [Python 3.14](https://www.python.org/) (or let `uv` install a compatible interpreter).
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python dependency management.
+- [Node.js](https://nodejs.org/) and npm for the frontend. Use a Node.js version supported by the installed Vite release.
+- [Docker Engine + Docker Compose](https://docs.docker.com/compose/) **or** [Podman + Podman Compose](https://podman.io/).
+- Git or [Jujutsu](https://jj-vcs.github.io/jj/) for version control.
 
-### 3. Add team and project rules
-
-Create a GitHub repository, initially private if the project contains any non-public sample data. Add collaborators with their own accounts rather than sharing credentials. Turn on pull requests, require at least one teammate review, and require CI checks before merging once CI exists. Keep all test/sample data synthetic and never commit secrets or `.env` files.
-
-Use a simple contribution process:
-
-```text
-Issue with expected behavior and acceptance examples
-  → small feature branch
-  → implementation plus tests
-  → pull request and human review
-  → passing automated checks
-  → merge to main
-```
-
-Create a `.gitignore` appropriate for Python, Node, editors, local databases, uploaded data, build output, and secrets. Review it before the first commit so datasets and credentials do not enter Git history.
-
-### 4. Connect the GitHub remote
-
-Create an empty repository on GitHub (do not have GitHub pre-create a README if you already made one locally), then run:
+Check the installed tools:
 
 ```bash
-git add README.md .gitignore docs
-git commit -m "docs: define OCR labeling MVP"
-git remote add origin https://github.com/YOUR-ORG/YOUR-REPO.git
-git push -u origin main
+python --version
+uv --version
+node --version
+npm --version
+podman --version  # or: docker --version
 ```
 
-If you prefer SSH and have a GitHub SSH key configured, use `git@github.com:YOUR-ORG/YOUR-REPO.git` as the remote URL. Confirm the remote with `git remote -v`.
+## Getting started
 
-### 5. Scaffold the stack in small steps
+The commands below assume the repository has already been scaffolded and contains the files shown above. If you are the person creating the initial scaffold, use the commands in [Initial scaffolding](#initial-scaffolding) first.
 
-After agreeing on the stack, scaffold backend and frontend separately using official framework instructions. Commit each known-good step. For Django, the rough shape is:
+### 1. Clone the repository
+
+Using Git:
+
+```bash
+git clone <repository-url>
+cd annotation-platform
+```
+
+If you use Jujutsu locally, you can work with the repository through its Git-compatible integration. See [Version control: Git and Jujutsu](#version-control-git-and-jujutsu).
+
+### 2. Configure environment variables
+
+Copy the example environment file and update the local development values:
+
+```bash
+cp .env.example .env
+```
+
+Example `.env.example`:
+
+```dotenv
+# PostgreSQL container
+POSTGRES_DB=annotation_platform
+POSTGRES_USER=annotation_app
+POSTGRES_PASSWORD=change-this-local-password
+
+# Django connection to PostgreSQL on the host
+DATABASE_URL=postgresql://annotation_app:change-this-local-password@127.0.0.1:5432/annotation_platform
+
+# Django development settings
+DJANGO_SECRET_KEY=replace-this-with-a-local-development-secret
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+Use the same database name, username, and password in `POSTGRES_*` and `DATABASE_URL`. The `.env` file is for local development only and must never be committed. Do not reuse the example secret or password in a deployed environment.
+
+### 3. Start PostgreSQL
+
+The root `compose.yaml` should define a PostgreSQL service with a persistent named volume. Start it with Podman:
+
+```bash
+podman compose up -d db
+podman compose ps
+podman compose logs -f db
+```
+
+Or use Docker Compose:
+
+```bash
+docker compose up -d db
+docker compose ps
+docker compose logs -f db
+```
+
+Wait until the database health check reports healthy before starting Django migrations. PostgreSQL data is persisted in a named volume; stopping or recreating the container should not delete that volume. **Do not use `down -v` unless you intentionally want to delete the local database.**
+
+### 4. Set up the Django backend
+
+From the repository root:
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install django djangorestframework pillow
-django-admin startproject config .
-python manage.py startapp datasets
-python manage.py startapp annotations
+uv sync
 ```
 
-Pin dependencies in the project's chosen dependency file after installation. These commands do not yet create a production-ready service or configure PostgreSQL; local SQLite is enough for an initial learning prototype. Add a frontend scaffold only once the team chooses the frontend toolchain. Do not run every command blindly: confirm the versions and setup instructions for your environment, then write the verified steps into README.
+`uv sync` creates or updates the project's virtual environment from `pyproject.toml` and `uv.lock`. The lockfile should be committed so all contributors resolve the same dependency versions.
 
-### 6. First implementation issues
+Run Django checks:
 
-Create one issue per vertical slice:
+```bash
+uv run python manage.py check
+```
 
-1. Define OCR annotation examples and import contract.
-2. Create database models and migrations for dataset, image, and OCR region.
-3. Implement and fixture-test geometry validation.
-4. Implement safe ZIP inspection and dry-run import report.
-5. Implement dataset/image API and API tests.
-6. Build image display and rectangle drawing with transcription editing.
-7. Implement save/reload and concurrency conflict behavior.
-8. Implement export and a round-trip fixture test.
-9. Add CI and an end-to-end smoke test.
+**Important:** Before the first `migrate`, implement the custom user model in `accounts` and configure:
 
-The first demo should complete one complete path with a tiny synthetic dataset. Add more features only after this path is reliable.
+```python
+AUTH_USER_MODEL = "accounts.User"
+```
 
-## Definition of done for the MVP
+Changing Django's user model after the initial migrations is difficult. Confirm the custom user model and database settings before creating the first migration.
 
-- A teammate can clone the repository and follow the README to run the app and tests.
-- A valid sample archive imports; invalid archives produce understandable errors and do not leave partial datasets.
-- An annotator can create/edit/save OCR regions and Unicode transcriptions, then reload them accurately.
-- A second user cannot silently overwrite newer annotation changes.
-- Export output matches a checked-in synthetic expected fixture.
-- CI runs on proposed changes, and at least one human reviews each merge.
-- The group can explain the architecture and the data flow without relying on an AI tool.
+After the initial models and settings are ready:
+
+```bash
+uv run python manage.py makemigrations
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+```
+
+Start the backend development server:
+
+```bash
+uv run python manage.py runserver
+```
+
+The API is expected to be available at `http://127.0.0.1:8000/` during local development.
+
+### 5. Set up local file storage
+
+Create local media directories if they do not exist:
+
+```bash
+mkdir -p backend/media/uploads
+mkdir -p backend/media/staging
+mkdir -p backend/media/exports
+```
+
+Configure Django's filesystem storage in its settings:
+
+```python
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+```
+
+- `uploads/` stores original uploaded images.
+- `staging/` stores temporary import archives while they are validated.
+- `exports/` stores generated export files when needed.
+
+The database stores the relative file name/path and image metadata. It does not store the actual image bytes. The `backend/media/` directory must be ignored by Git and backed up separately from PostgreSQL.
+
+Uploaded datasets are private application data. Do not expose the media directory as unrestricted public static files. Image download endpoints must check that the requesting user has permission to access the image's dataset.
+
+### 6. Set up the React frontend
+
+In a separate terminal:
+
+```bash
+cd frontend
+npm ci
+```
+
+If `package-lock.json` has not been created yet, run `npm install` once and commit the generated lockfile. For normal contributor setup, prefer `npm ci` so the exact dependency tree in the lockfile is installed.
+
+Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+The frontend is expected to be available at `http://localhost:5173/` during local development.
+
+### 7. Run the application
+
+You will normally use three terminals:
+
+**Terminal 1 — PostgreSQL** (from the repository root):
+
+```bash
+podman compose up -d db
+```
+
+**Terminal 2 — Django** (from `backend/`):
+
+```bash
+uv run python manage.py runserver
+```
+
+**Terminal 3 — React** (from `frontend/`):
+
+```bash
+npm run dev
+```
+
+The React development origin must be included in Django's CORS allowlist (for example, `http://localhost:5173`). Keep CORS restricted to known frontend origins; do not use a wildcard as a shortcut for credentialed requests.
+
+## Initial scaffolding
+
+These commands are for the initial repository setup, not something every contributor needs to repeat.
+
+### Create the repository skeleton
+
+```bash
+mkdir annotation-platform
+cd annotation-platform
+
+mkdir -p backend frontend docs tests/fixtures .github/workflows .agents/skills
+touch README.md .gitignore AGENTS.md .env.example
+```
+
+### Bootstrap Django with uv
+
+```bash
+cd backend
+
+# Create a minimal uv-managed Python project.
+uv init --bare --python 3.14
+uv python pin 3.14
+
+# Runtime dependencies.
+uv add "Django>=6.1,<6.2" djangorestframework "psycopg[binary]" Pillow django-environ django-cors-headers drf-spectacular
+
+# Development and test dependencies.
+uv add --dev pytest pytest-django pytest-cov ruff
+
+# Generate the Django project and domain apps.
+uv run django-admin startproject config .
+uv run python manage.py startapp accounts
+uv run python manage.py startapp datasets
+uv run python manage.py startapp annotations
+uv run python manage.py startapp imports
+```
+
+The version range keeps the project on the Django 6.1 series; `uv.lock` records the exact resolved versions. Do not create initial migrations until the custom User model is configured.
+
+The API contract currently describes JWT authentication. Choose and integration-test the JWT package against the selected Django/DRF versions before relying on it; add it with `uv add <package>` once that compatibility check is part of the backend setup.
+
+### Bootstrap React with Vite
+
+From the repository root:
+
+```bash
+npm create vite@latest frontend -- --template react-ts
+cd frontend
+npm install
+```
+
+Commit `package-lock.json` so teammates can use `npm ci`.
+
+### Add frontend packages when needed
+
+Install additional packages when implementing their corresponding feature, not all at once:
+
+```bash
+cd frontend
+
+# Client-side routing and API data fetching.
+npm install react-router-dom @tanstack/react-query
+
+# Canvas-based annotation editor.
+npm install konva react-konva
+```
+
+## Common development commands
+
+Run these from the relevant project directory.
+
+### Backend (`backend/`)
+
+```bash
+uv sync                                  # Sync dependencies from uv.lock
+uv add <package>                         # Add a runtime dependency
+uv add --dev <package>                  # Add a development dependency
+uv remove <package>                      # Remove a dependency
+uv lock                                  # Resolve/update the lockfile
+uv run python manage.py check            # Check Django configuration
+uv run python manage.py makemigrations   # Create migration files
+uv run python manage.py migrate          # Apply migrations
+uv run python manage.py test             # Run Django tests
+uv run pytest                            # Run pytest suite, if configured
+uv run ruff check .                      # Lint Python code
+uv run ruff format .                     # Format Python code
+```
+
+### Frontend (`frontend/`)
+
+```bash
+npm install                              # Install/update dependencies
+npm ci                                   # Clean install from package-lock.json
+npm run dev                              # Start development server
+npm run lint                             # Run ESLint (if configured by the Vite template)
+npm run build                            # Build production assets
+npm run preview                          # Preview production build
+```
+
+## Database and file storage
+
+- PostgreSQL is the source of truth for application records.
+- Image binaries, staged import archives, and generated exports live in local filesystem storage during development.
+- The application stores paths/keys and metadata in PostgreSQL, not the binary image content.
+- Do not commit database volumes, uploaded images, export archives, `.env` files, or secrets.
+- Back up PostgreSQL and the media directory together; they represent different parts of the application's data.
+- For a deployment with multiple backend instances, local storage must be replaced by shared storage or a shared persistent volume. Local storage is the development/MVP choice, not a claim that arbitrary local disks can be shared between servers.
+
+## API and annotation conventions
+
+The detailed database schema and endpoint definitions belong in `docs/database-and-api-spec.md`. Keep that document as the canonical contract for frontend/backend integration.
+
+Key conventions:
+
+1. API routes are versioned under `/api/v1/`.
+2. IDs are UUIDs and timestamps use ISO-8601.
+3. OCR annotations contain a transcription; face annotations do not.
+4. Bounding boxes use original-image pixel coordinates, with `(x1, y1)` as the top-left and `(x2, y2)` as the bottom-right.
+5. Coordinates must satisfy `0 <= x1 < x2 <= image.width` and `0 <= y1 < y2 <= image.height`.
+6. The backend validates permissions, geometry, file content, and imported data. Frontend validation is not a security boundary.
+7. Annotation updates use a version number to detect stale edits instead of silently overwriting another user's work.
+8. Import must validate an archive before creating dataset records. Failed imports must not leave a partial dataset.
+9. Import/export uses the documented, versioned interchange format. Do not silently change its shape; update the API/schema documentation and tests when it changes.
+
+## Testing and quality checks
+
+Tests should protect annotation data from corruption and accidental overwrites.
+
+At minimum, cover:
+
+- custom user creation and authentication;
+- dataset membership and role permissions;
+- valid/invalid image uploads;
+- OCR and face annotation creation and validation;
+- bounding-box boundaries and image-coordinate conversions;
+- stale annotation versions and conflict responses;
+- ZIP path traversal, invalid archives, duplicate names, missing image references, and invalid coordinates;
+- import/export round trips using small synthetic fixtures;
+- frontend drawing, saving, reloading, and editing of annotations.
+
+Use synthetic test images and archives. Do not commit private, real, or sensitive face images to the repository.
+
+## Contributing
+
+1. Read the relevant requirements and the API/schema contract before changing code.
+2. Work on one small issue or vertical slice at a time.
+3. Keep changes focused; avoid unrelated refactoring in feature branches.
+4. Add or update tests with the implementation.
+5. Update documentation when the schema, API, or user-visible workflow changes.
+6. Open a pull request for review and explain what changed, how it was tested, and any remaining limitations.
+7. Do not merge code that has not been reviewed or does not pass the required checks.
+
+Suggested branch/commit areas include `accounts`, `datasets`, `annotations`, `imports`, `frontend`, `tests`, and `docs`.
+
+## AI-assisted development
+
+AI coding tools may be used to implement issues, but generated code is not automatically correct or accepted.
+
+- Read `AGENTS.md` and the relevant skill in `.agents/skills/` before starting a task.
+- Give the agent a narrow task with acceptance criteria and relevant API/schema references.
+- Ask for tests and a summary of the files changed.
+- Review the diff and run the tests locally before opening a pull request.
+- Do not let an agent change the database schema or API contract without updating the corresponding documentation and migrations.
+- A team member remains responsible for understanding, testing, and maintaining every merged change.
+
+## Version control: Git and Jujutsu
+
+The repository uses a Git-compatible remote for collaboration. Contributors may use Git or Jujutsu (`jj`) locally; using Jujutsu is optional and does not change the application architecture.
+
+- Follow the team's agreed branch/bookmark and pull-request workflow.
+- Push work to the shared Git-compatible remote so teammates can review it.
+- Do not commit local tool state, virtual environments, build output, or uploaded data.
+- If using Jujutsu, coordinate the remote bookmark/branch workflow with the team before pushing shared work.
+
+## References
+
+- [Django 6.1 documentation](https://docs.djangoproject.com/en/6.1/)
+- [Django supported versions and support schedule](https://www.djangoproject.com/download/)
+- [Django REST Framework documentation](https://www.django-rest-framework.org/)
+- [uv documentation](https://docs.astral.sh/uv/)
+- [Vite documentation](https://vite.dev/guide/)
+- [PostgreSQL documentation](https://www.postgresql.org/docs/)
+- [Jujutsu documentation](https://jj-vcs.github.io/jj/)

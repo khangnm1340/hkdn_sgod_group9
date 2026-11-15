@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "skills": {
+    "agentic-jujutsu": {
+      "source": "ruvnet/ruflo",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/agentic-jujutsu/SKILL.md",
+      "computedHash": "bf745a130ee704f964dc24e0278855c3fa929f3e3039f7e15db76d50df53aff5"
+    },
+    "django-patterns": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/django-patterns/SKILL.md",
+      "computedHash": "813575af295260cfe04c5690b15b4125fcec91db5bafb6730042692403f3161d"
+    },
+    "uv-package-manager": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/uv-package-manager/SKILL.md",
+      "computedHash": "adecd8faec01ee261801680942c6a97159d73c3ae9f355568cf9426edc61c1c3"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "7991ed4fbecdac23f47c1a40c243e00a212a9e7f3604db93959b3ae11dffe299"
+    }
+  }
+}
