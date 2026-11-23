@@ -1,3 +1,4 @@
+import { Outlet } from 'react-router-dom';
 export function DatasetsPage() {
-  return <div>DatasetsPage</div>;
+  return <Outlet />;
 }

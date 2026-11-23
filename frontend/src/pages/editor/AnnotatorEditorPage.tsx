@@ -1,3 +1,4 @@
+import { Outlet } from 'react-router-dom';
 export function AnnotatorEditorPage() {
-  return <div>AnnotatorEditorPage</div>;
+  return <Outlet />;
 }
