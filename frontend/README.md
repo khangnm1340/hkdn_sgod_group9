@@ -1,116 +1,77 @@
-# Frontend — OCR + Face Annotation Platform
+# LABEL SPACE — Frontend Setup
 
-Ứng dụng React + TypeScript + Vite cho nền tảng gán nhãn OCR và Face Bounding Box.
-
-## 1. Tech Stack & Lệnh chạy nhanh
-
-- **Framework:** React 19 + TypeScript + Vite
-- **Routing:** `react-router-dom` v7
-- **Server State:** `@tanstack/react-query` v5
-- **Canvas Editor:** `konva` + `react-konva`
-- **Icons:** `lucide-react`
-- **Linter:** `oxlint`
-
-```bash
-cd frontend
-npm install
-npm run dev      # Chạy dev server (mặc định http://localhost:5173)
-npm run lint     # Kiểm tra lint bằng oxlint
-npm run build    # Kiểm tra TypeScript (tsc -b) và build production
-```
+Khung định tuyến (routing) ban đầu cho nền tảng **OCR + Face Annotation Platform**.  
+Giai đoạn này chỉ nối luồng giữa các trang bằng trang trắng và `<Link>` thô — **chưa code UI và chưa nối API**.
 
 ---
 
-## 2. Cấu trúc thư mục (`src/`) & Ý nghĩa từng phần
+## 1. Cấu trúc `frontend/src/`
 
 ```text
 frontend/src/
-├── main.tsx                    # Điểm vào (entry point), mount <App /> vào #root
-├── App.tsx                     # Gốc ứng dụng: bọc <AppProviders> quanh <RouterProvider>
-├── app/                        # Cấu hình cốt lõi của ứng dụng (routing, guard, provider)
-│   ├── providers.tsx           # Bọc QueryClientProvider và AuthProvider cho toàn app
-│   ├── router.tsx              # Khai báo toàn bộ cây route, layout và gắn guard
-│   └── guards.tsx              # ProtectedRoute (chặn chưa login) & PublicOnlyRoute (chặn đã login)
-├── lib/                        # Logic dùng chung, context, API client
-│   └── auth-context.tsx        # Quản lý trạng thái đăng nhập (AuthProvider + hook useAuth)
-├── components/                 # Component dùng chung nhiều nơi
-│   └── DevAuthBar.tsx          # Thanh công cụ chỉ hiện khi dev: Mock Login/Logout & link test nhanh
-├── layouts/                    # Khung bố cục bao bọc nhóm trang (dùng <Outlet />)
-│   ├── AuthLayout.tsx          # Khung cho trang Login / Register
-│   ├── DashboardLayout.tsx     # Khung chính cho Datasets, Import, Export, Profile
-│   ├── DatasetDetailLayout.tsx # Khung lồng bên trong chi tiết 1 Dataset (tab Images / Members / Settings)
-│   └── EditorLayout.tsx        # Khung toàn màn hình cho trình vẽ bounding box
-└── pages/                      # Các màn hình cụ thể theo từng domain
-    ├── auth/
-    │   ├── LoginPage.tsx       # /login
-    │   ├── RegisterPage.tsx    # /register
-    │   └── ProfilePage.tsx     # /profile
-    ├── datasets/
-    │   ├── DatasetsPage.tsx        # /datasets
-    │   ├── DatasetMembersPage.tsx  # /datasets/:datasetId/members
-    │   └── DatasetSettingsPage.tsx # /datasets/:datasetId/settings
-    ├── images/
-    │   └── DatasetImagesPage.tsx   # /datasets/:datasetId/images
-    ├── editor/
-    │   └── AnnotatorEditorPage.tsx # /datasets/:datasetId/images/:imageId/annotate
-    ├── imports/
-    │   ├── ImportZipPage.tsx       # /import
-    │   └── ImportReportPage.tsx    # /import/:importId
-    ├── exports/
-    │   └── ExportPage.tsx          # /export
-    └── NotFoundPage.tsx            # * (404)
+├── main.tsx & App.tsx              # Khởi chạy ứng dụng (AppProviders + RouterProvider)
+├── index.css & App.css             # Giữ nền trắng mặc định
+├── app/
+│   ├── router.tsx                  # Khai báo toàn bộ route
+│   ├── providers.tsx               # React Query + AuthProvider
+│   └── guards.tsx                  # ProtectedRoute & PublicOnlyRoute (đang mở tự do URL)
+├── lib/
+│   └── auth-context.tsx            # State đăng nhập (chờ nối JWT API)
+├── components/
+│   └── DevAuthBar.tsx              # Placeholder (trả về null)
+├── layouts/
+│   ├── PublicLayout.tsx            # Trang giới thiệu (/)
+│   ├── AuthLayout.tsx              # Login, Create Account, Forgot Password
+│   ├── MainLayout.tsx              # Thanh link chung (Overview, Projects, Jobs, Profile, Logout)
+│   └── EditorLayout.tsx            # Link quay lại Job View + khung Editor
+└── pages/
+    ├── overview/OverviewPage.tsx
+    ├── auth/                       # LoginPage, CreateAccountPage, ForgotPasswordPage, ProfileSettingsPage
+    ├── projects/ProjectsPage.tsx
+    ├── jobs/                       # JobsManagementPage, JobViewPage
+    ├── editor/AnnotatorEditorPage.tsx
+    └── NotFoundPage.tsx            # 404 (*)
 ```
 
 ---
 
-## 3. Luồng đi của ứng dụng (Application Flow)
+## 2. Sơ đồ Route
 
-### 3.1. Luồng khởi chạy (Bootstrapping)
+| Route | Layout | Page |
+|---|---|---|
+| `/` | `PublicLayout` | `OverviewPage` |
+| `/login` | `AuthLayout` | `LoginPage` |
+| `/register` | `AuthLayout` | `CreateAccountPage` |
+| `/forgot-password` | `AuthLayout` | `ForgotPasswordPage` |
+| `/projects` | `MainLayout` | `ProjectsPage` |
+| `/jobs` & `/projects/:projectId/jobs` | `MainLayout` | `JobsManagementPage` |
+| `/projects/:projectId/jobs/:jobId` | `MainLayout` | `JobViewPage` |
+| `/profile` | `MainLayout` | `ProfileSettingsPage` |
+| `/projects/:projectId/jobs/:jobId/images/:imageId/annotate` | `EditorLayout` | `AnnotatorEditorPage` |
+| `*` | — | `NotFoundPage` |
 
-```text
-index.html (#root)
-  └─▶ main.tsx
-        └─▶ App.tsx
-              └─▶ AppProviders (providers.tsx)
-                    ├─ QueryClientProvider (TanStack Query)
-                    └─ AuthProvider (lib/auth-context.tsx)
-                          └─▶ RouterProvider (app/router.tsx)
-                                └─▶ RootLayout (<Outlet /> + DevAuthBar khi DEV)
-```
-
-Mọi component nằm trong `RouterProvider` đều có thể gọi `useAuth()` để đọc thông tin người dùng hiện tại và gọi `useQuery`/`useMutation` của React Query.
-
-### 3.2. Luồng điều hướng & Bảo vệ Route (Routing & Guards)
-
-```text
-Người dùng mở URL
-  ├─ Thuộc nhóm Auth (/login, /register)
-  │     └─▶ PublicOnlyRoute (guards.tsx)
-  │           ├─ Đã đăng nhập ──▶ Redirect sang /datasets
-  │           └─ Chưa đăng nhập ─▶ AuthLayout ─▶ LoginPage / RegisterPage
-  │
-  ├─ Thuộc nhóm App (/, /datasets, /import, /export, /profile, /.../annotate)
-  │     └─▶ ProtectedRoute (guards.tsx)
-  │           ├─ Chưa đăng nhập ─▶ Redirect sang /login (lưu lại location cũ trong state.from)
-  │           └─ Đã đăng nhập ──▶ Layout tương ứng ─▶ Page tương ứng
-  │                 ├─ /                  ──▶ tự redirect sang /datasets
-  │                 └─ /datasets/:id      ──▶ tự redirect sang /datasets/:id/images
-  │
-  └─ Đường dẫn không khớp ──▶ NotFoundPage (*)
-```
+**Lưu ý:**
+- `Logout` là nút hành động trong `MainLayout` (quay về `/login`), không tạo page riêng.
+- Các popup (`Create Project`, `Create Job`, `Delete Image`) là Modal mở đè trên page tương ứng khi code UI, không tạo route riêng.
 
 ---
 
-## 4. Trạng thái Auth hiện tại & Cách nối Backend thật sau này
+## 3. Cách chạy & kiểm tra luồng
 
-Hiện tại khung Auth đã được nối sẵn hoàn chỉnh mà chưa cần đợi UI hay Backend:
-- **`auth-context.tsx`** đang dùng mock auth trong bộ nhớ (`user` mặc định là `null`).
-- **`DevAuthBar.tsx`** tự động hiển thị ở đáy màn hình khi chạy `npm run dev` (và tự biến mất khi `npm run build`), cho phép bấm **Mock Login / Logout** và nhảy nhanh qua mọi route để kiểm tra guard.
+```bash
+npm --prefix frontend install   # Cài dependencies
+npm --prefix frontend run dev   # Chạy local (mặc định http://localhost:5173)
+npm --prefix frontend run build # Kiểm tra TypeScript & build
+npm --prefix frontend run lint  # Kiểm tra lint (oxlint)
+```
 
-### Khi ghép UI và Backend thật (`/api/v1/auth/...`):
-1. **Không cần sửa** `router.tsx`, `guards.tsx`, `providers.tsx` hay `App.tsx`.
-2. Trong `src/lib/auth-context.tsx`:
-   - Thay hàm `login(email, password)` bằng gọi `POST /api/v1/auth/token/` rồi `GET /api/v1/auth/me/`.
-   - Thêm kiểm tra phiên đăng nhập ban đầu khi khởi động app (dùng `isLoading` để `guards.tsx` chờ trước khi redirect).
-3. Trong `LoginPage.tsx` và `RegisterPage.tsx`: dựng form UI và gọi `const { login } = useAuth()`.
-4. Xóa hoặc gỡ `DevAuthBar` khỏi `router.tsx` khi không còn cần test nhanh.
+Mở `http://localhost:5173/` và bấm theo luồng:  
+**`Overview` → `Login` → `Sign In` → `Projects` → `Open Jobs` → `Open Job #1` → `Open Editor` → `Back to Job View` → `Logout`**.
+
+---
+
+## 4. Bước tiếp theo
+
+1. Code UI chi tiết cho các Layout, Page và Modal theo Figma `LABEL SPACE`.
+2. Bật kiểm tra đăng nhập trong `src/app/guards.tsx` và nối API `/api/v1/` (Django DRF).
+3. Xây dựng công cụ vẽ OCR / Face trên `react-konva`.

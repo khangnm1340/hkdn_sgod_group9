@@ -1,84 +1,68 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { DevAuthBar } from '../components/DevAuthBar';
+import { createBrowserRouter } from 'react-router-dom';
 import { AuthLayout } from '../layouts/AuthLayout';
-import { DashboardLayout } from '../layouts/DashboardLayout';
-import { DatasetDetailLayout } from '../layouts/DatasetDetailLayout';
 import { EditorLayout } from '../layouts/EditorLayout';
+import { MainLayout } from '../layouts/MainLayout';
+import { PublicLayout } from '../layouts/PublicLayout';
+import { CreateAccountPage } from '../pages/auth/CreateAccountPage';
+import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
 import { LoginPage } from '../pages/auth/LoginPage';
-import { RegisterPage } from '../pages/auth/RegisterPage';
-import { ProfilePage } from '../pages/auth/ProfilePage';
-import { DatasetsPage } from '../pages/datasets/DatasetsPage';
-import { DatasetImagesPage } from '../pages/images/DatasetImagesPage';
-import { DatasetMembersPage } from '../pages/datasets/DatasetMembersPage';
-import { DatasetSettingsPage } from '../pages/datasets/DatasetSettingsPage';
-import { ImportZipPage } from '../pages/imports/ImportZipPage';
-import { ImportReportPage } from '../pages/imports/ImportReportPage';
-import { ExportPage } from '../pages/exports/ExportPage';
+import { ProfileSettingsPage } from '../pages/auth/ProfileSettingsPage';
 import { AnnotatorEditorPage } from '../pages/editor/AnnotatorEditorPage';
+import { JobsManagementPage } from '../pages/jobs/JobsManagementPage';
+import { JobViewPage } from '../pages/jobs/JobViewPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { OverviewPage } from '../pages/overview/OverviewPage';
+import { ProjectsPage } from '../pages/projects/ProjectsPage';
 import { ProtectedRoute, PublicOnlyRoute } from './guards';
 
-function RootLayout() {
-    return (
-        <>
-            <Outlet />
-            {import.meta.env.DEV && <DevAuthBar />}
-        </>
-    );
-}
-
 export const router = createBrowserRouter([
-    {
-        element: <RootLayout />,
+  // 1. Public landing page
+  {
+    element: <PublicLayout />,
+    children: [{ path: '/', element: <OverviewPage /> }],
+  },
+
+  // 2. Auth pages
+  {
+    element: <PublicOnlyRoute />,
+    children: [
+      {
+        element: <AuthLayout />,
         children: [
-            {
-                element: <PublicOnlyRoute />,
-                children: [
-                    {
-                        element: <AuthLayout />,
-                        children: [
-                            { path: '/login', element: <LoginPage /> },
-                            { path: '/register', element: <RegisterPage /> },
-                        ],
-                    },
-                ],
-            },
-            {
-                element: <ProtectedRoute />,
-                children: [
-                    {
-                        element: <DashboardLayout />,
-                        children: [
-                            { index: true, element: <Navigate to="/datasets" replace /> },
-                            { path: '/datasets', element: <DatasetsPage /> },
-                            {
-                                path: '/datasets/:datasetId',
-                                element: <DatasetDetailLayout />,
-                                children: [
-                                    { index: true, element: <Navigate to="images" replace /> },
-                                    { path: 'images', element: <DatasetImagesPage /> },
-                                    { path: 'members', element: <DatasetMembersPage /> },
-                                    { path: 'settings', element: <DatasetSettingsPage /> },
-                                ],
-                            },
-                            { path: '/import', element: <ImportZipPage /> },
-                            { path: '/import/:importId', element: <ImportReportPage /> },
-                            { path: '/export', element: <ExportPage /> },
-                            { path: '/profile', element: <ProfilePage /> },
-                        ],
-                    },
-                    {
-                        element: <EditorLayout />,
-                        children: [
-                            {
-                                path: '/datasets/:datasetId/images/:imageId/annotate',
-                                element: <AnnotatorEditorPage />,
-                            },
-                        ],
-                    },
-                ],
-            },
-            { path: '*', element: <NotFoundPage /> },
+          { path: '/login', element: <LoginPage /> },
+          { path: '/register', element: <CreateAccountPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
         ],
-    },
+      },
+    ],
+  },
+
+  // 3. Main workspace & Editor pages
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <MainLayout />,
+        children: [
+          { path: '/projects', element: <ProjectsPage /> },
+          { path: '/jobs', element: <JobsManagementPage /> },
+          { path: '/projects/:projectId/jobs', element: <JobsManagementPage /> },
+          { path: '/projects/:projectId/jobs/:jobId', element: <JobViewPage /> },
+          { path: '/profile', element: <ProfileSettingsPage /> },
+        ],
+      },
+      {
+        element: <EditorLayout />,
+        children: [
+          {
+            path: '/projects/:projectId/jobs/:jobId/images/:imageId/annotate',
+            element: <AnnotatorEditorPage />,
+          },
+        ],
+      },
+    ],
+  },
+
+  // 4. Fallback 404
+  { path: '*', element: <NotFoundPage /> },
 ]);

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
+export type DatasetRole = 'owner' | 'annotator' | 'reviewer';
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -7,11 +9,10 @@ export interface AuthUser {
   last_name: string;
 }
 
-export interface AuthContextValue {
+interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (user: AuthUser) => void;
   logout: () => void;
 }
 
@@ -19,16 +20,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const isLoading = false;
 
-  // shortcut: mock auth in memory, replace with POST /api/v1/auth/token/ + GET /api/v1/auth/me/ when backend auth is ready
-  const login = async (email: string, _password: string) => {
-    setUser({
-      id: '00000000-0000-0000-0000-000000000001',
-      email,
-      first_name: 'Dev',
-      last_name: 'User',
-    });
+  const login = (nextUser: AuthUser) => {
+    setUser(nextUser);
   };
 
   const logout = () => {
@@ -40,7 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: user !== null,
-        isLoading,
         login,
         logout,
       }}
@@ -53,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth must be used inside <AuthProvider>');
   }
   return ctx;
 }

@@ -1,31 +1,17 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../lib/auth-context';
+import { Outlet } from 'react-router-dom';
 
+/**
+ * Tạm mở tự do mọi URL trong giai đoạn setup trang trắng.
+ * Khi nối API JWT thật, bật lại kiểm tra `useAuth().isAuthenticated` để chuyển hướng về `/login`.
+ */
 export function ProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const location = useLocation();
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
   return <Outlet />;
 }
 
+/**
+ * Tạm mở tự do mọi URL trong giai đoạn setup trang trắng.
+ * Khi nối API JWT thật, bật lại kiểm tra `useAuth().isAuthenticated` để chuyển hướng về `/projects`.
+ */
 export function PublicOnlyRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to="/datasets" replace />;
-  }
-
   return <Outlet />;
 }
