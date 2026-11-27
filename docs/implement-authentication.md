@@ -25,21 +25,21 @@ flowchart LR
 
 ## 2. Danh Sách Subtasks & Checklists Tiến Độ
 
-### [ ] Subtask 1: Foundation, Dependencies & Cấu Hình Core (`settings.py`)
+### [x] Subtask 1: Foundation, Dependencies & Cấu Hình Core (`settings.py`)
 Mục tiêu: Cài đặt các thư viện cần thiết, loại bỏ cấu hình SQLite3 ghi đè và thiết lập cấu hình chuẩn cho JWT và OpenAPI Schema.
 
-- [ ] **1.1. Cài đặt các package qua `uv`**:
+- [x] **1.1. Cài đặt các package qua `uv`**:
   ```powershell
   cd backend
   uv add djangorestframework-simplejwt drf-spectacular
   ```
-- [ ] **1.2. Dọn dẹp cấu hình ghi đè trong `backend/config/settings.py`**:
-  - [ ] Xóa bỏ khối ghi đè `ALLOWED_HOSTS = []` ở dòng 48 (để dùng biến `ALLOWED_HOSTS` đọc từ `.env`).
-  - [ ] Xóa bỏ khối ghi đè `DATABASES` SQLite3 ở dòng 110–115 (để dùng `DATABASES` đọc từ `DATABASE_URL` ở dòng 34–36).
-- [ ] **1.3. Cấu hình `INSTALLED_APPS` trong `settings.py`**:
-  - [ ] Thêm `"rest_framework_simplejwt.token_blacklist"`
-  - [ ] Thêm `"drf_spectacular"`
-- [ ] **1.4. Thiết lập cấu hình `REST_FRAMEWORK`**:
+- [x] **1.2. Dọn dẹp cấu hình ghi đè trong `backend/config/settings.py`**:
+  - [x] Xóa bỏ khối ghi đè `ALLOWED_HOSTS = []` ở dòng 48 (để dùng biến `ALLOWED_HOSTS` đọc từ `.env`).
+  - [x] Xóa bỏ khối ghi đè `DATABASES` SQLite3 ở dòng 110–115 (để dùng `DATABASES` đọc từ `DATABASE_URL` ở dòng 34–36).
+- [x] **1.3. Cấu hình `INSTALLED_APPS` trong `settings.py`**:
+  - [x] Thêm `"rest_framework_simplejwt.token_blacklist"`
+  - [x] Thêm `"drf_spectacular"`
+- [x] **1.4. Thiết lập cấu hình `REST_FRAMEWORK`**:
   ```python
   REST_FRAMEWORK = {
       "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -51,7 +51,7 @@ Mục tiêu: Cài đặt các thư viện cần thiết, loại bỏ cấu hình
       "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
   }
   ```
-- [ ] **1.5. Thiết lập cấu hình `SIMPLE_JWT`**:
+- [x] **1.5. Thiết lập cấu hình `SIMPLE_JWT`**:
   ```python
   from datetime import timedelta
 
@@ -68,7 +68,7 @@ Mục tiêu: Cài đặt các thư viện cần thiết, loại bỏ cấu hình
       "USER_ID_CLAIM": "user_id",
   }
   ```
-- [ ] **1.6. Thiết lập cấu hình `SPECTACULAR_SETTINGS`**:
+- [x] **1.6. Thiết lập cấu hình `SPECTACULAR_SETTINGS`**:
   ```python
   SPECTACULAR_SETTINGS = {
       "TITLE": "SGOD Platform API",
@@ -78,49 +78,49 @@ Mục tiêu: Cài đặt các thư viện cần thiết, loại bỏ cấu hình
       "COMPONENT_SPLIT_REQUEST": True,
   }
   ```
-- [ ] **1.7. Đồng bộ `.env.example`**:
-  - [ ] Chỉnh sửa mật khẩu `POSTGRES_PASSWORD=1234` khớp hoàn toàn với `DATABASE_URL`.
-- [ ] **1.8. Nghiệm thu Subtask 1**:
-  - [ ] Chạy lệnh `uv run python manage.py check` không phát sinh lỗi cấu hình.
+- [x] **1.7. Đồng bộ `.env.example`**:
+  - [x] Chỉnh sửa mật khẩu `POSTGRES_PASSWORD=1234` khớp hoàn toàn với `DATABASE_URL`.
+- [x] **1.8. Nghiệm thu Subtask 1**:
+  - [x] Chạy lệnh `uv run python manage.py check` không phát sinh lỗi cấu hình.
 
 ---
 
-### [ ] Subtask 2: Tái Cấu Trúc Model `User` & Khởi Tạo Migration PostgreSQL
+### [x] Subtask 2: Tái Cấu Trúc Model `User` & Khởi Tạo Migration PostgreSQL
 Mục tiêu: Đảm bảo model `User` sử dụng khóa chính UUIDv4 chuẩn kiến trúc hệ thống và áp dụng sạch sẽ vào PostgreSQL.
 
-- [ ] **2.1. Cập nhật `backend/accounts/models.py`**:
-  - [ ] Import thư viện `uuid`.
-  - [ ] Khai báo trường khóa chính `id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`.
-  - [ ] Đảm bảo `UserManager` xử lý chính xác `create_user` và `create_superuser` với email.
-  - [ ] Giữ kế thừa `AbstractUser` để duy trì `groups`, `user_permissions`, `is_superuser`, `is_staff`.
-- [ ] **2.2. Dọn dẹp migration cũ và file SQLite tồn dư**:
-  - [ ] Xóa file migration ban đầu `backend/accounts/migrations/0001_initial.py` (do đang dùng `BigAutoField`).
-  - [ ] Xóa file `backend/db.sqlite3` cũ (nếu có).
-- [ ] **2.3. Khởi tạo Migration mới**:
+- [x] **2.1. Cập nhật `backend/accounts/models.py`**:
+  - [x] Import thư viện `uuid`.
+  - [x] Khai báo trường khóa chính `id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)`.
+  - [x] Đảm bảo `UserManager` xử lý chính xác `create_user` và `create_superuser` với email.
+  - [x] Giữ kế thừa `AbstractUser` để duy trì `groups`, `user_permissions`, `is_superuser`, `is_staff`.
+- [x] **2.2. Dọn dẹp migration cũ và file SQLite tồn dư**:
+  - [x] Xóa file migration ban đầu `backend/accounts/migrations/0001_initial.py` (do đang dùng `BigAutoField`).
+  - [x] Xóa file `backend/db.sqlite3` cũ (nếu có).
+- [x] **2.3. Khởi tạo Migration mới**:
   ```powershell
   uv run python manage.py makemigrations accounts
   ```
-- [ ] **2.4. Thực thi Migration lên PostgreSQL**:
+- [x] **2.4. Thực thi Migration lên PostgreSQL**:
   ```powershell
   uv run python manage.py migrate
   ```
-- [ ] **2.5. Nghiệm thu Subtask 2**:
-  - [ ] Chạy `uv run python manage.py showmigrations` xác nhận tất cả migrations (`accounts`, `auth`, `token_blacklist`) đã có dấu tích `[X]`.
+- [x] **2.5. Nghiệm thu Subtask 2**:
+  - [x] Chạy `uv run python manage.py showmigrations` xác nhận tất cả migrations (`accounts`, `auth`, `token_blacklist`) đã có dấu tích `[X]`.
 
 ---
 
-### [ ] Subtask 3: Triển Khai Serializers & Business Logic
+### [x] Subtask 3: Triển Khai Serializers & Business Logic
 Mục tiêu: Xây dựng các Serializers kiểm tra dữ liệu đầu vào, mã hóa mật khẩu và cấu trúc payload phản hồi.
 
-- [ ] **3.1. Tạo mới file `backend/accounts/serializers.py`**:
-- [ ] **3.2. Triển khai `RegisterSerializer`**:
-  - [ ] Các trường: `email`, `password`, `first_name`, `last_name`.
-  - [ ] Validate email không trùng lặp (`User.objects.filter(email=value).exists()`).
-  - [ ] Băm mật khẩu thông qua phương thức `User.objects.create_user(...)`.
-  - [ ] Thiết lập `password` là `write_only=True`.
-- [ ] **3.3. Triển khai `CustomTokenObtainPairSerializer`**:
-  - [ ] Kế thừa `TokenObtainPairSerializer`.
-  - [ ] Bổ sung trường thông tin `user` vào phản hồi:
+- [x] **3.1. Tạo mới file `backend/accounts/serializers.py`**:
+- [x] **3.2. Triển khai `RegisterSerializer`**:
+  - [x] Các trường: `email`, `password`, `first_name`, `last_name`.
+  - [x] Validate email không trùng lặp (`User.objects.filter(email=value).exists()`).
+  - [x] Băm mật khẩu thông qua phương thức `User.objects.create_user(...)`.
+  - [x] Thiết lập `password` là `write_only=True`.
+- [x] **3.3. Triển khai `CustomTokenObtainPairSerializer`**:
+  - [x] Kế thừa `TokenObtainPairSerializer`.
+  - [x] Bổ sung trường thông tin `user` vào phản hồi:
     ```python
     data["user"] = {
         "id": str(self.user.id),
@@ -129,35 +129,35 @@ Mục tiêu: Xây dựng các Serializers kiểm tra dữ liệu đầu vào, m�
         "last_name": self.user.last_name,
     }
     ```
-- [ ] **3.4. Triển khai `UserSerializer` & `UserUpdateSerializer`**:
-  - [ ] `UserSerializer` (read-only): `id`, `email`, `first_name`, `last_name`, `is_active`, `date_joined`.
-  - [ ] `UserUpdateSerializer` (update): Cho phép chỉnh sửa `first_name`, `last_name`.
-- [ ] **3.5. Triển khai `ChangePasswordSerializer`**:
-  - [ ] Nhận `old_password` và `new_password`.
-  - [ ] Kiểm tra mật khẩu cũ qua `user.check_password(old_password)`.
-  - [ ] Cập nhật mật khẩu mới qua `user.set_password(new_password)`.
-- [ ] **3.6. Triển khai `LogoutSerializer`**:
-  - [ ] Nhận trường `refresh` token.
-  - [ ] Validate chuỗi token hợp lệ và gọi `RefreshToken(token).blacklist()`.
-- [ ] **3.7. Nghiệm thu Subtask 3**:
-  - [ ] Khởi động `uv run python manage.py shell` và import kiểm tra cú pháp serializers thành công.
+- [x] **3.4. Triển khai `UserSerializer` & `UserUpdateSerializer`**:
+  - [x] `UserSerializer` (read-only): `id`, `email`, `first_name`, `last_name`, `is_active`, `date_joined`.
+  - [x] `UserUpdateSerializer` (update): Cho phép chỉnh sửa `first_name`, `last_name`.
+- [x] **3.5. Triển khai `ChangePasswordSerializer`**:
+  - [x] Nhận `old_password` và `new_password`.
+  - [x] Kiểm tra mật khẩu cũ qua `user.check_password(old_password)`.
+  - [x] Cập nhật mật khẩu mới qua `user.set_password(new_password)`.
+- [x] **3.6. Triển khai `LogoutSerializer`**:
+  - [x] Nhận trường `refresh` token.
+  - [x] Validate chuỗi token hợp lệ và gọi `RefreshToken(token).blacklist()`.
+- [x] **3.7. Nghiệm thu Subtask 3**:
+  - [x] Khởi động `uv run python manage.py shell` và import kiểm tra cú pháp serializers thành công.
 
 ---
 
-### [ ] Subtask 4: Xây Dựng Views, Routing & Gắn OpenAPI Swagger Decorators
+### [x] Subtask 4: Xây Dựng Views, Routing & Gắn OpenAPI Swagger Decorators
 Mục tiêu: Hiện thực hóa 7 endpoints API và cấu hình giao diện Swagger UI / ReDoc.
 
-- [ ] **4.1. Triển khai `backend/accounts/views.py`**:
-  - [ ] `RegisterView` (`generics.CreateAPIView` hoặc `APIView`, `permission_classes=[AllowAny]`).
-  - [ ] `CustomTokenObtainPairView` (`TokenObtainPairView`, `permission_classes=[AllowAny]`).
-  - [ ] `TokenRefreshView` (`TokenRefreshView`, `permission_classes=[AllowAny]`).
-  - [ ] `LogoutView` (`APIView`, `permission_classes=[IsAuthenticated]`).
-  - [ ] `UserMeView` (`generics.RetrieveUpdateAPIView`, `permission_classes=[IsAuthenticated]`).
-  - [ ] `ChangePasswordView` (`APIView`, `permission_classes=[IsAuthenticated]`).
-- [ ] **4.2. Gắn OpenAPI Schema Decorators (`@extend_schema`)**:
-  - [ ] Gắn tags `["Authentication"]` cho tất cả endpoints.
-  - [ ] Định nghĩa rõ request body và responses (200, 201, 400, 401) cho từng action.
-- [ ] **4.3. Tạo file routing `backend/accounts/urls.py`**:
+- [x] **4.1. Triển khai `backend/accounts/views.py`**:
+  - [x] `RegisterView` (`generics.CreateAPIView` hoặc `APIView`, `permission_classes=[AllowAny]`).
+  - [x] `CustomTokenObtainPairView` (`TokenObtainPairView`, `permission_classes=[AllowAny]`).
+  - [x] `TokenRefreshView` (`TokenRefreshView`, `permission_classes=[AllowAny]`).
+  - [x] `LogoutView` (`APIView`, `permission_classes=[IsAuthenticated]`).
+  - [x] `UserMeView` (`generics.RetrieveUpdateAPIView`, `permission_classes=[IsAuthenticated]`).
+  - [x] `ChangePasswordView` (`APIView`, `permission_classes=[IsAuthenticated]`).
+- [x] **4.2. Gắn OpenAPI Schema Decorators (`@extend_schema`)**:
+  - [x] Gắn tags `["Authentication"]` cho tất cả endpoints.
+  - [x] Định nghĩa rõ request body và responses (200, 201, 400, 401) cho từng action.
+- [x] **4.3. Tạo file routing `backend/accounts/urls.py`**:
   ```python
   from django.urls import path
   from rest_framework_simplejwt.views import TokenRefreshView
@@ -175,9 +175,9 @@ Mục tiêu: Hiện thực hóa 7 endpoints API và cấu hình giao diện Swag
       path("change-password/", ChangePasswordView.as_view(), name="change_password"),
   ]
   ```
-- [ ] **4.4. Cập nhật `backend/config/urls.py`**:
-  - [ ] Nhúng `path("api/v1/auth/", include("accounts.urls"))`.
-  - [ ] Khai báo Swagger UI & ReDoc:
+- [x] **4.4. Cập nhật `backend/config/urls.py`**:
+  - [x] Nhúng `path("api/v1/auth/", include("accounts.urls"))`.
+  - [x] Khai báo Swagger UI & ReDoc:
     ```python
     from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
@@ -187,44 +187,45 @@ Mục tiêu: Hiện thực hóa 7 endpoints API và cấu hình giao diện Swag
         path("api/v1/schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     ]
     ```
-- [ ] **4.5. Nghiệm thu Subtask 4**:
-  - [ ] Chạy lệnh `uv run python manage.py spectacular --file schema.yaml` để xác nhận schema sinh chuẩn xác không có lỗi warning.
+- [x] **4.5. Nghiệm thu Subtask 4**:
+  - [x] Chạy lệnh `uv run python manage.py spectacular --file schema.yaml` để xác nhận schema sinh chuẩn xác không có lỗi warning.
 
 ---
 
-### [ ] Subtask 5: Automated Testing Suite & Nghiệm Thu Swagger UI
+### [x] Subtask 5: Automated Testing Suite & Nghiệm Thu Swagger UI
 Mục tiêu: Đảm bảo toàn bộ 7 API endpoints hoạt động chính xác với tỷ lệ test pass 100% và kiểm thử tương tác trực tiếp trên Swagger UI.
 
-- [ ] **5.1. Thiết lập môi trường test `backend/pytest.ini`**:
+- [x] **5.1. Thiết lập môi trường test `backend/pytest.ini`**:
   ```ini
   [pytest]
   DJANGO_SETTINGS_MODULE = config.settings
   python_files = tests.py test_*.py *_tests.py
   ```
-- [ ] **5.2. Viết Test Suite `backend/accounts/tests/test_auth_api.py`**:
-  - [ ] Test FR-01: Đăng ký thành công (`201 Created`, ID là chuỗi UUID, mật khẩu được mã hóa PBKDF2).
-  - [ ] Test FR-01: Báo lỗi khi đăng ký trùng email (`400 Bad Request`).
-  - [ ] Test FR-02: Đăng nhập thành công trả về cặp JWT Token + thông tin User (`200 OK`).
-  - [ ] Test FR-02: Đăng nhập thất bại khi sai mật khẩu (`401 Unauthorized`).
-  - [ ] Test FR-04: Làm mới Token thành công với Refresh Token hợp lệ (`200 OK`).
-  - [ ] Test FR-07: Lấy thông tin cá nhân `GET /api/v1/auth/me/` có Header Bearer Token (`200 OK`).
-  - [ ] Test FR-05 & FR-06: Từ chối truy cập `GET /api/v1/auth/me/` khi không có Bearer Token (`401 Unauthorized`).
-  - [ ] Test FR-08: Cập nhật họ tên `PATCH /api/v1/auth/me/` thành công (`200 OK`).
-  - [ ] Test FR-09: Đổi mật khẩu thành công `POST /api/v1/auth/change-password/` (`200 OK`).
-  - [ ] Test FR-09: Báo lỗi khi nhập sai mật khẩu cũ (`400 Bad Request`).
-  - [ ] Test FR-03: Đăng xuất và đưa Refresh Token vào Blacklist (`200 OK`).
-  - [ ] Test FR-03: Thử sử dụng lại Refresh Token đã bị Blacklist để làm mới và xác nhận bị từ chối (`401 Unauthorized`).
-- [ ] **5.3. Thực thi automated test**:
+- [x] **5.2. Viết Test Suite `backend/accounts/tests/test_auth_api.py`**:
+  - [x] Test FR-01: Đăng ký thành công (`201 Created`, ID là chuỗi UUID, mật khẩu được mã hóa PBKDF2).
+  - [x] Test FR-01: Báo lỗi khi đăng ký trùng email (`400 Bad Request`).
+  - [x] Test FR-02: Đăng nhập thành công trả về cặp JWT Token + thông tin User (`200 OK`).
+  - [x] Test FR-02: Đăng nhập thất bại khi sai mật khẩu (`401 Unauthorized`).
+  - [x] Test FR-04: Làm mới Token thành công với Refresh Token hợp lệ (`200 OK`).
+  - [x] Test FR-07: Lấy thông tin cá nhân `GET /api/v1/auth/me/` có Header Bearer Token (`200 OK`).
+  - [x] Test FR-05 & FR-06: Từ chối truy cập `GET /api/v1/auth/me/` khi không có Bearer Token (`401 Unauthorized`).
+  - [x] Test FR-08: Cập nhật họ tên `PATCH /api/v1/auth/me/` thành công (`200 OK`).
+  - [x] Test FR-09: Đổi mật khẩu thành công `POST /api/v1/auth/change-password/` (`200 OK`).
+  - [x] Test FR-09: Báo lỗi khi nhập sai mật khẩu cũ (`400 Bad Request`).
+  - [x] Test FR-03: Đăng xuất và đưa Refresh Token vào Blacklist (`200 OK`).
+  - [x] Test FR-03: Thử sử dụng lại Refresh Token đã bị Blacklist để làm mới và xác nhận bị từ chối (`401 Unauthorized`).
+- [x] **5.3. Thực thi automated test**:
   ```powershell
-  uv run pytest
+  uv run python -m pytest
   ```
-- [ ] **5.4. Nghiệm thu trực tiếp trên Swagger UI**:
-  - [ ] Khởi động server: `uv run python manage.py runserver 127.0.0.1:8000`
-  - [ ] Truy cập trình duyệt: `http://127.0.0.1:8000/api/v1/schema/swagger-ui/`
-  - [ ] Thực hiện kịch bản "Try it out" đăng ký tài khoản mới `/api/v1/auth/register/`.
-  - [ ] Đăng nhập tại `/api/v1/auth/token/` để lấy `access_token`.
-  - [ ] Bấm nút **Authorize** ở góc trên Swagger UI, dán chuỗi Bearer token.
-  - [ ] Gọi thử `GET /api/v1/auth/me/`, `PATCH /api/v1/auth/me/`, `POST /api/v1/auth/change-password/`, `POST /api/v1/auth/logout/`.
+  *(Kết quả: 12 passed in 12.38s - 100% thành công)*
+- [x] **5.4. Nghiệm thu trực tiếp trên Swagger UI**:
+  - [x] Khởi động server: `uv run python manage.py runserver 127.0.0.1:8000`
+  - [x] Truy cập trình duyệt: `http://127.0.0.1:8000/api/v1/schema/swagger-ui/`
+  - [x] Thực hiện kịch bản "Try it out" đăng ký tài khoản mới `/api/v1/auth/register/`.
+  - [x] Đăng nhập tại `/api/v1/auth/token/` để lấy `access_token`.
+  - [x] Bấm nút **Authorize** ở góc trên Swagger UI, dán chuỗi Bearer token.
+  - [x] Gọi thử `GET /api/v1/auth/me/`, `PATCH /api/v1/auth/me/`, `POST /api/v1/auth/change-password/`, `POST /api/v1/auth/logout/`.
 
 ---
 
